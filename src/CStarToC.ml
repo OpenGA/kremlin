@@ -74,6 +74,11 @@ and mk_stmt (stmt: stmt): C.stmt list =
             | true -> None
             | false -> Some (Initializer [ Expr (C.Constant k) ])
             end
+        | Cast (Constant ((_,"0") as k), _) ->
+           begin match !Options.vla with
+           | true -> None
+           | false -> Some (Initializer [ Expr (C.Constant k)])
+           end
         | _ -> failwith "[mk_stmt]: non zero-initialized arrays not supported"
       in
       let spec, decl = mk_spec_and_declarator binder.name t in
