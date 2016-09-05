@@ -15,10 +15,12 @@ let braces_with_nesting contents =
 let int i = string (string_of_int i)
 
 let print_width = function
+  | UInt -> string "uintmax"
   | UInt8 -> string "uint8"
   | UInt16 -> string "uint16"
   | UInt32 -> string "uint32"
   | UInt64 -> string "uint64"
+  | Int -> string "intmax"
   | Int8 -> string "int8"
   | Int16 -> string "int16"
   | Int32 -> string "int32"
@@ -51,6 +53,9 @@ let print_op = function
   | Or -> string "||"
   | Xor -> string "^"
   | Not -> string "!"
+  | PostIncr | PreIncr -> string "++"
+  | PostDecr | PreDecr -> string "--"
+  | Assign -> string "="
 
 let print_lident (idents, ident) =
   separate_map dot string (idents @ [ ident ])
@@ -63,3 +68,10 @@ let print_files print_decl files =
     string (String.uppercase f) ^^ colon ^^ jump (print_program print_decl p)
   ) files
 
+let printf_of_pprint f =
+  fun buf t ->
+    PPrint.ToBuffer.compact buf (f t)
+
+let printf_of_pprint_pretty f =
+  fun buf t ->
+    PPrint.ToBuffer.pretty 0.95 Utils.twidth buf (f t)

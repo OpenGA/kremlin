@@ -36,10 +36,10 @@ let rec print_decl = function
         group (string ident ^^ colon ^/^ print_typ typ ^^ semi)
       ) fields)
 
-and print_binder { name; typ; mut; mark; meta } =
+and print_binder { name; typ; mut; meta; mark; _ } =
   group (
     (if mut then string "mutable" ^^ break 1 else empty) ^^
-    string name ^^ lparen ^^ int mark ^^ comma ^^ space ^^ print_meta meta ^^ rparen ^^ colon ^/^
+    string name ^^ lparen ^^ int !mark ^^ comma ^^ space ^^ print_meta meta ^^ rparen ^^ colon ^/^
     print_typ typ
   )
 
@@ -59,14 +59,15 @@ and print_typ = function
   | TArrow (t1, t2) -> print_typ t1 ^^ space ^^ string "->" ^/^ nest 2 (print_typ t2)
   | TZ -> string "mpz_t"
 
-and print_expr = function
+and print_expr { node; _ } =
+  match node with
   | EAny ->
       string "$any"
   | EAbort ->
       string "$abort"
   | EBound v ->
       at ^^ int v
-  | EOpen { name; _ } ->
+  | EOpen (name, _) ->
       bang ^^ string name
   | EQualified lident ->
       print_lident lident
@@ -79,11 +80,10 @@ and print_expr = function
   | ELet (binder, e1, e2) ->
       group (group (string "let" ^/^ print_binder binder ^/^ equals) ^^
       jump (print_expr e1) ^/^ string "in") ^/^ group (print_expr e2)
-  | EIfThenElse (e1, e2, e3, t) ->
+  | EIfThenElse (e1, e2, e3) ->
       string "if" ^/^ print_expr e1 ^/^ string "then" ^^
       jump (print_expr e2) ^/^ string "else" ^^
-      jump (print_expr e3) ^/^
-      at ^^ print_typ t
+      jump (print_expr e3)
   | ESequence es ->
       separate_map (semi ^^ hardline) (fun e -> group (print_expr e)) es
   | EAssign (e1, e2) ->
@@ -99,10 +99,9 @@ and print_expr = function
       print_app string "subbuf" print_expr [e1; e2]
   | EBufBlit (e1, e2, e3, e4, e5) ->
       print_app string "blitbuf" print_expr [e1; e2; e3; e4; e5]
-  | EMatch (e, branches, t) ->
+  | EMatch (e, branches) ->
       group (string "match" ^/^ print_expr e ^/^ string "with") ^^
-      jump ~indent:0 (print_branches branches) ^/^
-      at ^^ print_typ t
+      jump ~indent:0 (print_branches branches)
   | EOp (o, w) ->
       string "(" ^^ print_op o ^^ string "," ^^ print_width w ^^ string ")"
   | ECast (e, t) ->
@@ -115,13 +114,17 @@ and print_expr = function
       string (string_of_bool b)
   | EReturn e ->
       string "return" ^/^ (nest 2 (print_expr e))
-  | EFlat (lid, fields) ->
+  | EFlat fields ->
       braces_with_nesting (separate_map break1 (fun (name, expr) ->
         group (string name ^/^ equals ^/^ print_expr expr ^^ semi)
-      ) fields) ^^ at ^^ print_lident lid
-  | EField (lid, expr, field) ->
-      parens_with_nesting (print_expr expr) ^^ dot ^^ string field ^/^
-      at ^^ print_lident lid
+      ) fields)
+  | EField (expr, field) ->
+      parens_with_nesting (print_expr expr) ^^ dot ^^ string field
+  | EWhile (e1, e2) ->
+      string "while" ^/^ parens_with_nesting (print_expr e1) ^/^
+      braces_with_nesting (print_expr e2)
+  | EBufCreateL es ->
+      string "newbuf" ^/^ braces_with_nesting (separate_map (comma ^^ break1) print_expr es)
 
 
 and print_branches branches =
@@ -141,6 +144,8 @@ and print_pat = function
 
 let print_files = print_files print_decl
 
-let mk_p f = fun buf t -> PPrint.ToBuffer.compact buf (f t)
-let ptyp = mk_p print_typ
-let pexpr = mk_p print_expr
+let ptyp = printf_of_pprint print_typ
+let pexpr = printf_of_pprint print_expr
+let plid = printf_of_pprint print_lident
+let pdecl = printf_of_pprint_pretty print_decl
+let pop = printf_of_pprint_pretty print_op

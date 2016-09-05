@@ -23,7 +23,7 @@ class lift (k: int) = object
   inherit map_counting
   (* A local variable (one that is less than [i]) is unaffected;
      a free variable is lifted up by [k]. *)
-  method! ebound i j =
+  method! ebound i _ j =
     if j < i then
       EBound j
     else
@@ -45,9 +45,9 @@ class subst (e2: expr) = object
   inherit map_counting
   (* The target variable [i] is replaced with [t2]. Any other
      variable is unaffected. *)
-  method! ebound i j =
+  method! ebound i _ j =
     if j = i then
-      lift i e2
+      (lift i e2).node
     else
       EBound (if j < i then j else j-1)
 end
@@ -59,33 +59,38 @@ let subst (e2: expr) (i: int) (e1: expr) =
 
 (* Close [binder] into bound variable i *)
 
-class close (binder: binder) = object
+class close (atom': Atom.t) = object
   inherit map_counting
 
-  method! eopen i b =
-    if b == binder then
+  method! eopen i _ name atom =
+    if Atom.equal atom atom' then
       EBound i
     else
-      EOpen b
+      EOpen (name, atom)
 end
 
-let close (b: binder) (i: int) (e: expr) =
-  (new close b) # visit i e
+let close (a: Atom.t) (i: int) (e: expr) =
+  (new close a) # visit i e
 
 let close_binder b e =
-  close b 0 e
+  close b.atom 0 e
 
 (* ---------------------------------------------------------------------------- *)
 
 let open_binder b e1 =
-  subst (EOpen b) 0 e1
+  let a = Atom.fresh () in
+  let b = { b with atom = a } in
+  b, subst { node = EOpen (b.name, a); mtyp = b.typ } 0 e1
 
-let open_function_binders =
-  List.fold_right open_binder
+let open_function_binders binders term =
+  List.fold_right (fun binder (acc, term) ->
+    let binder, term = open_binder binder term in
+    binder :: acc, term
+  ) binders ([], term)
 
 let close_function_binders bs e1 =
   let rec close_binderi i e1 = function
-    | b :: bs -> close_binderi (i + 1) (close b i e1) bs
+    | b :: bs -> close_binderi (i + 1) (close b.atom i e1) bs
     | [] -> e1
   in
   close_binderi 0 e1 (List.rev bs)

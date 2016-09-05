@@ -1,19 +1,6 @@
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
-#include <inttypes.h>
-#include <assert.h>
-
-#include "../kremlib/kremlib.h"
-#include "Buffer_Utils.c"
-#include "Chacha_wip.c"
-#include "Poly_Parameters.c"
-#include "Poly_Bigint.c"
-#include "Poly_Bignum.c"
-#include "Poly_Poly1305_wip.c"
-#include "AEAD_Chacha20_Poly1305.c"
-
+#include "kremlib.h"
 #include "testlib.h"
+#include "Crypto_AEAD_Chacha20Poly1305.h"
 
 /* https://tools.ietf.org/html/rfc7539#section-2.8.1 */
 uint8_t plaintext[] = "Ladies and Gentlemen of the class of '99: "
@@ -56,7 +43,7 @@ int main() {
   uint8_t ciphertext[TEXT_SIZE];
   uint8_t tag[TAG_SIZE];
 
-  AEAD_Chacha20_Poly1305_chacha20_aead_encrypt(ciphertext,
+  Crypto_AEAD_Chacha20Poly1305_chacha20_aead_encrypt(ciphertext,
     tag, aad, key, iv,
     common_part, plaintext, TEXT_SIZE, 12);
 

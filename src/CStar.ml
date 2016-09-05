@@ -6,9 +6,9 @@ type program =
   decl list
 
 and decl =
-  | Function of typ * ident * binder list * block
-  | TypeAlias of ident * typ
   | Global of ident * typ * expr
+  | Function of typ * ident * binder list * block
+  | Type of ident * typ
 
 and stmt =
   | Return of expr
@@ -16,6 +16,7 @@ and stmt =
   | Decl of binder * expr
     (** Scope is: statements that follow. *)
   | IfThenElse of expr * block * block
+  | While of expr * block
   | Assign of expr * expr
     (** First expression has to be a [Bound] or [Open]. *)
   | BufWrite of expr * expr * expr
@@ -32,11 +33,15 @@ and expr =
   | Qualified of lident
   | Constant of K.t
   | BufCreate of expr * expr
+  | BufCreateL of expr list
   | BufRead of expr * expr
   | BufSub of expr * expr
   | Op of op
   | Cast of expr * typ
   | Bool of bool
+  | Struct of ident * (ident option * expr) list
+    (** Either all names are provided, or no names are provided *)
+  | Field of expr * ident
   | Any
 
 and block =
@@ -65,5 +70,7 @@ and typ =
   | Qualified of lident
   | Array of typ * expr
   | Function of typ * typ list
+      (** Return type, arguments *)
   | Bool
   | Z
+  | Struct of ident option * (ident * typ) list

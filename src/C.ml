@@ -8,9 +8,12 @@ type type_spec =
   | Int of Constant.width
   | Void
   | Named of ident
+  | Struct of ident option * declaration list
+    (** not encoding all the invariants here *)
 
 and storage_spec =
   | Typedef
+  | Extern
 
 and declarator_and_init =
   declarator * init option
@@ -40,6 +43,8 @@ and expr =
   | Constant of K.t
   | Bool of bool
   | Sizeof of expr
+  | CompoundLiteral of type_name * init list
+  | MemberAccess of expr * ident
 
 (** this is a WILD approximation of the notion of "type name" in C _and_ a hack
  * because there's the invariant that the ident found at the bottom of the
@@ -62,8 +67,13 @@ and ident =
   string
 
 and init =
-  | Expr of expr
+  | InitExpr of expr
+  | Designated of designator * expr
   | Initializer of init list
+
+and designator =
+  | Dot of ident
+  | Bracket of int
 
 (** Note: according to http:/ /en.cppreference.com/w/c/language/statements,
  * declarations can only be part of a compound statement... we do not enforce
@@ -71,11 +81,15 @@ and init =
  * [mk_compound_if]), as the risk of messing things up, naturally. *)
 type stmt =
   | Compound of stmt list
-  | Expr of expr
-  | SelectIf of expr * stmt
-  | SelectIfElse of expr * stmt * stmt
-  | Return of expr option
   | Decl of declaration
+  | Expr of expr
+  | If of expr * stmt
+  | IfElse of expr * stmt * stmt
+  | While of expr * stmt
+  | For of declaration * expr * expr * stmt
+    (** "init_clause may be an expression or a declaration" -> only doing the
+     * latter *)
+  | Return of expr option
 
 and program =
   declaration_or_function list
